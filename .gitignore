@@ -1,0 +1,8 @@
+packages
+*.lock
+.project
+.settings
+.buildlog
+build
+out
+sandbox
