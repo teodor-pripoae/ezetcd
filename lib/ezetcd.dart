@@ -5,7 +5,7 @@
 // found in the LICENSE file.
 
 /** 
- *  Client for etcd, a highly available key value store.
+ *  Client for etcd, a highly available key-value store.
  *  TODO: Use path instead of key consistenly.
  **/
 
@@ -72,9 +72,9 @@ class NodeEventType {
 
   const NodeEventType._(this._toString);
 
-  static const NodeEventType CREATE = const NodeEventType._('CREATE');
-  static const NodeEventType MODIFY = const NodeEventType._('MODIFY');
-  static const NodeEventType DELETE = const NodeEventType._('DELETE');
+  static const NodeEventType CREATED = const NodeEventType._('CREATED');
+  static const NodeEventType MODIFIED = const NodeEventType._('MODIFIED');
+  static const NodeEventType DELETED = const NodeEventType._('DELETED');
 
   toString() {
     return _toString;
@@ -289,7 +289,7 @@ class EtcdClient {
       if (_watchers.containsKey(controller)) {
         var event = _jsonToNodeEvent(json);
         controller.add(event);
-        if (event.type == NodeEventType.DELETE) {
+        if (event.type == NodeEventType.DELETED) {
           // Etcd propagates changes to the parent directory for watched nodes, 
           // but the index is the index of the parent node. So, we keep the current 
           // waitIndex if this the event is for a prefix.
@@ -415,16 +415,16 @@ class EtcdClient {
   static NodeEvent _jsonToNodeEvent(Map json) {
     if (json['action'] == 'set') {
       if (json['prevNode'] != null) {
-        return new NodeEvent(NodeEventType.MODIFY, newValue: _jsonToNode(json['node']), oldValue: _jsonToNode(json['prevNode']));
+        return new NodeEvent(NodeEventType.MODIFIED, newValue: _jsonToNode(json['node']), oldValue: _jsonToNode(json['prevNode']));
       } else {
-        return new NodeEvent(NodeEventType.CREATE, newValue: _jsonToNode(json['node']));
+        return new NodeEvent(NodeEventType.CREATED, newValue: _jsonToNode(json['node']));
       }
     } else if (json['action'] == 'delete') {
-      return new NodeEvent(NodeEventType.DELETE, oldValue: _jsonToNode(json['prevNode']));
+      return new NodeEvent(NodeEventType.DELETED, oldValue: _jsonToNode(json['prevNode']));
     } else if (json['action'] == 'create') {
-      return new NodeEvent(NodeEventType.CREATE, newValue: _jsonToNode(json['node']));
+      return new NodeEvent(NodeEventType.CREATED, newValue: _jsonToNode(json['node']));
     } else if (json['action'] == 'update') {
-      return new NodeEvent(NodeEventType.MODIFY, newValue: _jsonToNode(json['node']), oldValue: _jsonToNode(json['prevNode']));
+      return new NodeEvent(NodeEventType.MODIFIED, newValue: _jsonToNode(json['node']), oldValue: _jsonToNode(json['prevNode']));
     } else {
       throw new StateError('Unknown action type [${json['action']}]');
     }

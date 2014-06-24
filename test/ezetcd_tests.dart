@@ -52,7 +52,7 @@ _shouldCreateKey() {
   schedule(() {
     createResultReady.then((event) {
       expect(event.newValue.key, equals('/ezetcd_tests/key'));
-      expect(event.type, equals(NodeEventType.CREATE));
+      expect(event.type, equals(NodeEventType.CREATED));
       expect(event.newValue.value, equals('value'));
     });
   });
@@ -96,7 +96,7 @@ _shouldUpdateKey() {
   schedule(() {
     updateResultReady.then((event) {
       expect(event.newValue.key, equals('/ezetcd_tests/key'));
-      expect(event.type, equals(NodeEventType.MODIFY));
+      expect(event.type, equals(NodeEventType.MODIFIED));
       expect(event.newValue.value, equals('value2'));
       client.close();
     });
@@ -122,7 +122,7 @@ _shouldDeleteKey() {
     removeResultReady.then((event) {
       expect(event.oldValue.key, equals('/ezetcd_tests/key'));
       expect(event.oldValue.value, equals('value'));
-      expect(event.type, equals(NodeEventType.DELETE));
+      expect(event.type, equals(NodeEventType.DELETED));
       client.close();
     });
   });
@@ -166,7 +166,7 @@ _shouldWatchDirectory() {
     var completer = new Completer();
     eventsReady.future.then((e) {
       expect(events.length, equals(1));
-      expect(events[0].type, equals(NodeEventType.CREATE));
+      expect(events[0].type, equals(NodeEventType.CREATED));
       expect(events[0].newValue.key, equals('/ezetcd_tests/watched/a'));
       completer.complete();
       client.close();
