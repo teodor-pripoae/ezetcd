@@ -23,8 +23,8 @@ client.setNode('/directory1', directory:true).then((NodeEvent ne){
 todos
 =======
 
- * compareAndSet
- * compareAndDelete
+ * write tests for remaining SetCondition's and DeleteConditions
+ * clear code todo's
  * tls?
  * improve dartdoc documentation
  

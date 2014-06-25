@@ -9,6 +9,7 @@ main() {
 
   /* 
    * TODO: Use an etcd docker container for testing.
+   * TODO: Implement tests for remaining SetCondition's and DeleteConditions
    * NOTE: Setup and tear down are run as tests because of issues with setup and etcd.
    * The vm ends up hanging or race conditions are introduced with the directories.
    */
@@ -17,7 +18,8 @@ main() {
   test('should update key', _shouldUpdateKey);
   test('should delete key', _shouldDeleteKey);
   test('should watch directory', _shouldWatchDirectory);
-  test('should set only if exists', _shouldSetOnlyIfExists);
+  test('should set only if already exists', _shouldSetOnlyIfAlreadyExists);
+  test('should delete only if values are equal', _shouldDeleteOnlyIfValuesAreEqual);
   test('should teardown', _shouldTeardown);
 
 }
@@ -69,9 +71,10 @@ _shouldCreateKey() {
     getResultReady.then((node) {
       expect(node.key, equals('/ezetcd_tests/key'));
       expect(node.value, equals('value'));
-      client.close();
     });
-  });
+  }).whenComplete((){
+    client.close();
+  });  
 
 }
 
@@ -100,9 +103,10 @@ _shouldUpdateKey() {
       expect(event.newValue.key, equals('/ezetcd_tests/key'));
       expect(event.type, equals(NodeEventType.MODIFIED));
       expect(event.newValue.value, equals('value2'));
-      client.close();
     });
-  });
+  }).whenComplete((){
+    client.close();
+  });  
 }
 
 _shouldDeleteKey() {
@@ -125,9 +129,10 @@ _shouldDeleteKey() {
       expect(event.oldValue.key, equals('/ezetcd_tests/key'));
       expect(event.oldValue.value, equals('value'));
       expect(event.type, equals(NodeEventType.DELETED));
-      client.close();
     });
-  });
+  }).whenComplete((){
+    client.close();
+  });  
 }
 
 _shouldWatchDirectory() {
@@ -171,17 +176,18 @@ _shouldWatchDirectory() {
       expect(events[0].type, equals(NodeEventType.CREATED));
       expect(events[0].newValue.key, equals('/ezetcd_tests/watched/a'));
       completer.complete();
-      client.close();
     }).catchError((e, ss) {
       completer.completeError(e, ss);
     });
     return completer.future;
-  });
+  }).whenComplete((){
+    client.close();
+  });  
 
 
 }
 
-_shouldSetOnlyIfExists(){
+_shouldSetOnlyIfAlreadyExists(){
   var client = new EtcdClient();
   
     schedule(() {
@@ -190,6 +196,30 @@ _shouldSetOnlyIfExists(){
       }).catchError((e){
         expect(e, equals(ErrorCode.KEY_NOT_FOUND));
       });
+    }).whenComplete((){
+      client.close();
     });  
     
+}
+
+_shouldDeleteOnlyIfValuesAreEqual(){
+  
+  var client = new EtcdClient();
+  
+  var node;
+  
+  schedule((){
+    return client.setNode('/ezetcd_tests/key', value: 'value2');
+  }).then((NodeEvent ne){
+    node = ne.newValue;
+  });
+  
+  schedule((){
+    return client.compareAndDeleteNode('/ezetcd_tests/key', DeleteCondition.PREVIOUS_INDEX_EQUALS, 'notvalue').then((_){
+      fail('Future completed successfully.');
+    }).catchError((error){
+      expect(error, equals(ErrorCode.TEST_FAILED));
+    });
+  });
+  
 }

@@ -214,19 +214,24 @@ String _lookupSetCondition(SetCondition condition){
 }
 
 class DeleteCondition {
-  
+
   const DeleteCondition._();
  
-  static DeleteCondition PREVIOUS_INDEX_EQUALS = const DeleteCondition._();
-  static DeleteCondition PREVIOUS_VALUE_EQUALS = const DeleteCondition._();
+  static const DeleteCondition PREVIOUS_INDEX_EQUALS = const DeleteCondition._();
+  static const DeleteCondition PREVIOUS_VALUE_EQUALS = const DeleteCondition._();
   
 }
 
+
+//TODO File a bug @ dartbug.com.  Equality fails here, so have to use switch as a workaround.
 String _lookupDeleteCondition(DeleteCondition condition){
- 
-   if(condition == DeleteCondition.PREVIOUS_INDEX_EQUALS) return 'prevIndex';
-   return 'prevValue';
-  
+    switch(condition){
+      case DeleteCondition.PREVIOUS_VALUE_EQUALS:
+        return 'prevValue';
+      default:
+        return 'prevIndex';
+    }
+    
 }
 
 /**
@@ -399,10 +404,12 @@ class EtcdClient {
    *  * [recursive] must be true to delete directories with children
    */
     Future<NodeEvent> compareAndDeleteNode(String path, DeleteCondition condition, dynamic conditionValue, {recursive: false}){
+           
       var completer = new Completer();
       var options =  {
                       'recursive':recursive};
      var conditionName = _lookupDeleteCondition(condition);
+       
      options[conditionName] = conditionValue;
          _delete(path, options:options
          ).then((result) {
