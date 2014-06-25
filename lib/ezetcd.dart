@@ -508,8 +508,12 @@ class EtcdClient {
       request.close().then((response) {
         UTF8.decodeStream(response).then((jsonString) {
           completer.complete(JSON.decode(jsonString));
+        }).catchError((e, ss){
+          completer.completeError(e,ss);
         });
 
+      }).catchError((e,ss){
+        completer.completeError(e,ss);
       });
     }).catchError((error, stacktrace) {
       completer.completeError(error, stacktrace);
@@ -526,7 +530,11 @@ class EtcdClient {
 
         UTF8.decodeStream(response).then((jsonString) {
           completer.complete(JSON.decode(jsonString));
+        }).catchError((e, ss){
+          completer.completeError(e,ss);
         });
+      }).catchError((e, ss){
+        completer.completeError(e, ss);
       });
 
     }).catchError((error, stacktrace) {
@@ -542,8 +550,12 @@ class EtcdClient {
       request.close().then((response) {
         UTF8.decodeStream(response).then((jsonString) {
           completer.complete(JSON.decode(jsonString));
+        }).catchError((e,ss){
+          completer.completeError(e,ss);
         });
-      });
+      }).catchError((e,ss){
+        completer.completeError(e,ss);
+      });;
 
     }).catchError((error, stacktrace) {
       completer.completeError(error, stacktrace);
