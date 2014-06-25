@@ -6,7 +6,9 @@
 
 /** 
  *  Client for etcd, a highly available key-value store.
- *  TODO: Use path instead of key consistenly.
+ *  TODO: Use path instead of key consistently.
+ *  TODO: Validate arguments
+ *  TODO: Revisit error codes (some may never be reported to clients)
  **/
 
 library ezetcd;
@@ -21,21 +23,72 @@ import 'package:intl/intl.dart';
 final Logger _LOGGER = new Logger('ezetcd');
 final DateFormat _FORMAT = new DateFormat('yyyy-MM-ddThh:mm:ss.S');
 
-/// Raw etcd error codes
-const int _KEY_NOT_FOUND_CODE = 100;
-const int _KEY_NOT_FILE = 102;
-const int _NOT_A_DIRECTORY_CODE = 104;
-const int _NODE_EXISTS_CODE = 105;
+/// Raw etcd error codes as listed in [error.go](https://github.com/coreos/etcd/blob/master/error/error.go)
+const int _KEY_NOT_FOUND = 100;
+const int _TEST_FAILED = 101;
+const int _NOT_A_FILE = 102;
+const int _NO_MORE_PEER = 103;
+const int _NOT_A_DIR = 104;
+const int _NODE_EXIST = 105;
+const int _KEY_IS_PRESERVED = 106;
+const int _ROOTR_ONLY = 107;
+const int _DIR_NOT_EMPTY = 108;
+const int _EXISTING_PEER_ADDR = 109;
 
-/// Map of raw error codes to [EtcdError]
-const Map<int, EtcdError> _errorCodeMap = const {
-  _KEY_NOT_FOUND_CODE: EtcdError.KEY_NOT_FOUND,
-  _NOT_A_DIRECTORY_CODE: EtcdError.NOT_A_DIRECTORY,
-  _NODE_EXISTS_CODE: EtcdError.NODE_EXISTS,
-  _KEY_NOT_FILE: EtcdError.KEY_NOT_FILE
+const int _VALUE_REQUIRED = 200;
+const int _PREV_VALUE_REQUIRED = 201;
+const int _TTL_NAN = 202;
+const int _INDEX_NAN = 203;
+const int _VALUE_OR_TTL_REQUIRED = 204;
+const int _TIMEOUT_NAN = 205;
+const int _NAME_REQUIRED = 206;
+const int _INDEX_OR_VALUE_REQUIRED = 207;
+const int _INDEX_VALUE_MUTEX = 208;
+const int _INVALID_FIELD = 209;
+
+const int _RAFT_INTERNAL = 300;
+const int _LEADER_ELECT = 301;
+
+const int _WATCHER_CLEARED = 400;
+const int _EVENT_INDEX_CLEARED = 401;
+const int _STANDBY_INTERNAL = 402;
+const int _INVALID_ACTIVE_SIZE = 403;
+const int _INVALID_REMOVE_DELAY = 404;
+
+const int _CLIENT_INTERNAL = 500;
+
+/// Map of raw error codes to [ErrorCode]
+const Map<int, ErrorCode> _errorCodeMap = const {
+  _KEY_NOT_FOUND: ErrorCode.KEY_NOT_FOUND,
+  _TEST_FAILED: ErrorCode.TEST_FAILED,
+  _NOT_A_FILE: ErrorCode.NOT_A_FILE,
+  _NO_MORE_PEER: ErrorCode.NO_MORE_PEERS,
+  _NOT_A_DIR: ErrorCode.NOT_A_DIRECTORY,
+  _NODE_EXIST: ErrorCode.NODE_EXISTS,
+  _ROOTR_ONLY : ErrorCode.ROOT_IS_READ_ONLY,
+  _KEY_IS_PRESERVED : ErrorCode.KEY_IS_PRESERVED,
+  _DIR_NOT_EMPTY : ErrorCode.DIRECTORY_NOT_EMPTY,
+  _EXISTING_PEER_ADDR : ErrorCode.EXISTING_PEER_ADDRESS,
+  _VALUE_REQUIRED: ErrorCode.VALUE_REQUIRED,
+  _TTL_NAN: ErrorCode.TTL_NAN,
+  _INDEX_NAN : ErrorCode.INDEX_NAN,
+  _VALUE_OR_TTL_REQUIRED : ErrorCode.VALUE_OR_TTL_REQUIRED,
+  _TIMEOUT_NAN: ErrorCode.TIMEOUT_NAN,
+  _NAME_REQUIRED: ErrorCode.NAME_REQUIRED,
+  _INDEX_OR_VALUE_REQUIRED: ErrorCode.INDEX_OR_VALUE_REQUIRED,
+  _INDEX_VALUE_MUTEX: ErrorCode.INDEX_VALUE_MUTEX,
+  _INVALID_FIELD: ErrorCode.INVALID_FIELD,
+  _RAFT_INTERNAL: ErrorCode.RAFT_INTERNAL,
+  _LEADER_ELECT: ErrorCode.LEADER_ELECT,
+  _WATCHER_CLEARED: ErrorCode.WATCHER_CLEARED,
+  _EVENT_INDEX_CLEARED: ErrorCode.EVENT_INDEX_CLEARED,
+  _STANDBY_INTERNAL: ErrorCode.STANDBY_INTERNAL,
+  _INVALID_ACTIVE_SIZE: ErrorCode.INVALID_ACTIVE_SIZE,
+  _INVALID_REMOVE_DELAY: ErrorCode.INVALID_REMOVE_DELAY,
+  _CLIENT_INTERNAL: ErrorCode.CLIENT_INTERNAL_ERROR
 };
 
-_lookupErrorCode(int code) {
+ErrorCode _lookupErrorCode(int code) {
   if (_errorCodeMap.containsKey(code)) {
     return _errorCodeMap[code];
   }
@@ -43,20 +96,46 @@ _lookupErrorCode(int code) {
 }
 
 /**
- * Errors returned by etcd.
- * TODO: Map all etcd errors.
+ * Error codes returned by etcd. 
+ * 
+ * Error codes returned by etcd. See [error.go](https://github.com/coreos/etcd/blob/master/error/error.go).
  */
-class EtcdError {
+class ErrorCode {
 
   final String _toString;
+  final int code;
 
-  const EtcdError._(this._toString);
+  const ErrorCode._(this.code, this._toString);
 
-  static const EtcdError KEY_NOT_FOUND = const EtcdError._('KEY_NOT_FOUND');
-  static const EtcdError NOT_A_DIRECTORY = const EtcdError._('NOT_A_DIRECTORY');
-  static const EtcdError NODE_EXISTS = const EtcdError._('NODE_EXISTS');
-  static const EtcdError KEY_NOT_FILE = const EtcdError._('KEY_NOT_FILE');
-
+  static const ErrorCode KEY_NOT_FOUND = const ErrorCode._(_KEY_NOT_FOUND, 'KEY_NOT_FOUND');
+  static const ErrorCode TEST_FAILED = const ErrorCode._(_TEST_FAILED, 'TEST_FAILED');
+  static const ErrorCode NOT_A_FILE = const ErrorCode._(_NOT_A_FILE, 'NOT_A_FILE');
+  static const ErrorCode NO_MORE_PEERS = const ErrorCode._(_NO_MORE_PEER, 'NO_MORE_PEERS');
+  static const ErrorCode NOT_A_DIRECTORY = const ErrorCode._(_NOT_A_DIR, 'NOT_A_DIRECTORY');
+  static const ErrorCode NODE_EXISTS = const ErrorCode._(_NODE_EXIST, 'NODE_EXISTS');
+  static const ErrorCode ROOT_IS_READ_ONLY = const ErrorCode._(_ROOTR_ONLY, 'ROOT_IS_READ_ONLY');
+  static const ErrorCode KEY_IS_PRESERVED = const ErrorCode._(_KEY_IS_PRESERVED, 'KEY_IS_PRESERVED');
+  static const ErrorCode DIRECTORY_NOT_EMPTY = const ErrorCode._(_DIR_NOT_EMPTY, 'DIRECTORY_NOT_EMPTY');
+  static const ErrorCode EXISTING_PEER_ADDRESS = const ErrorCode._(_EXISTING_PEER_ADDR, 'EXISTING_PEER_ADDRESS');
+  static const ErrorCode VALUE_REQUIRED = const ErrorCode._(_VALUE_REQUIRED, 'VALUE_REQUIRED');
+  static const ErrorCode PREVIOUS_VALUE_REQUIRED = const ErrorCode._(_PREV_VALUE_REQUIRED, 'PREVIOUS_VALUE_REQUIRED');
+  static const ErrorCode TTL_NAN = const ErrorCode._(_TTL_NAN, 'TTL_NAN');
+  static const ErrorCode INDEX_NAN = const ErrorCode._(_INDEX_NAN, 'INDEX_NAN');
+  static const ErrorCode VALUE_OR_TTL_REQUIRED = const ErrorCode._(_VALUE_OR_TTL_REQUIRED, 'VALUE_OR_TTL_REQUIRED');
+  static const ErrorCode TIMEOUT_NAN = const ErrorCode._(_TIMEOUT_NAN, 'TIMEOUT_NAN');
+  static const ErrorCode NAME_REQUIRED = const ErrorCode._(_NAME_REQUIRED, 'NAME_REQUIRED');
+  static const ErrorCode INDEX_OR_VALUE_REQUIRED = const ErrorCode._(_NOT_A_FILE, 'NOT_A_FILE');
+  static const ErrorCode INDEX_VALUE_MUTEX = const ErrorCode._(_INDEX_VALUE_MUTEX, 'INDEX_VALUE_MUTEX');
+  static const ErrorCode INVALID_FIELD = const ErrorCode._(_INVALID_FIELD, 'INVALID_FIELD');
+  static const ErrorCode RAFT_INTERNAL = const ErrorCode._(_RAFT_INTERNAL, 'RAFT_INTERNAL');
+  static const ErrorCode LEADER_ELECT = const ErrorCode._(_LEADER_ELECT, 'LEADER_ELECT');
+  static const ErrorCode WATCHER_CLEARED = const ErrorCode._(_WATCHER_CLEARED, 'WATCHER_CLEARED');
+  static const ErrorCode EVENT_INDEX_CLEARED = const ErrorCode._(_EVENT_INDEX_CLEARED, 'EVENT_INDEX_CLEARED');
+  static const ErrorCode STANDBY_INTERNAL = const ErrorCode._(_STANDBY_INTERNAL, 'STANDBY_INTERNAL');
+  static const ErrorCode INVALID_ACTIVE_SIZE = const ErrorCode._(_INVALID_ACTIVE_SIZE, 'INVALID_ACTIVE_SIZE');
+  static const ErrorCode INVALID_REMOVE_DELAY = const ErrorCode._(_INVALID_REMOVE_DELAY, 'INVALID_REMOVE_DELAY');
+  static const ErrorCode CLIENT_INTERNAL_ERROR = const ErrorCode._(_CLIENT_INTERNAL, 'CLIENT_INTERNAL_ERROR');
+  
   toString() {
     return _toString;
   }
@@ -161,7 +240,7 @@ class EtcdClient {
   /**
    * Returns the [Node] at [path].
    * 
-   * Returns a [Future] which completes either with a [Node] or an [EtcdError].
+   * Returns a [Future] which completes either with a [Node] or an [ErrorCode].
    * If the [Node] is a directory, the returned [Node] will contain the
    * files in the directory and a listing of the subdirectories.  If
    * [recursive] is true, then the entire subdirectory structure is
