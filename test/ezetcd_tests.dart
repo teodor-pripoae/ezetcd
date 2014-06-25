@@ -17,6 +17,7 @@ main() {
   test('should update key', _shouldUpdateKey);
   test('should delete key', _shouldDeleteKey);
   test('should watch directory', _shouldWatchDirectory);
+  test('should set only if exists', _shouldSetOnlyIfExists);
   test('should teardown', _shouldTeardown);
 
 }
@@ -46,7 +47,7 @@ _shouldCreateKey() {
   var client = new EtcdClient();
 
   var createResultReady = schedule(() {
-    return client.setNode('/ezetcd_tests/key', value: 'value');
+    return client.setNode('/ezetcd_tests/key', value: 'value', ttl: new Duration(seconds: 5));
   });
 
   schedule(() {
@@ -54,6 +55,7 @@ _shouldCreateKey() {
       expect(event.newValue.key, equals('/ezetcd_tests/key'));
       expect(event.type, equals(NodeEventType.CREATED));
       expect(event.newValue.value, equals('value'));
+      expect(event.newValue.expiration, isNotNull);
     });
   });
 
@@ -177,4 +179,17 @@ _shouldWatchDirectory() {
   });
 
 
+}
+
+_shouldSetOnlyIfExists(){
+  var client = new EtcdClient();
+  
+    schedule(() {
+      return client.compareAndSetNode('/ezetcd_tests/key3', SetCondition.PREVIOUS_EXISTS, true, newValue: '3').then((_){
+        fail('Future completed successfully.');
+      }).catchError((e){
+        expect(e, equals(ErrorCode.KEY_NOT_FOUND));
+      });
+    });  
+    
 }
