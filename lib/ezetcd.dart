@@ -10,7 +10,6 @@
  *  TODO: Validate arguments
  *  TODO: Revisit error codes (some may never be reported to clients)
  **/
-
 library ezetcd;
 
 import 'dart:async';
