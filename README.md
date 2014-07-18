@@ -1,21 +1,40 @@
 ezetcd
 ======
 
-Dart client for etcd, a highly available key-value store.
+Dart client for [etcd](https://github.com/coreos/etcd), a highly available key-value store.
 
 This client is suitable for talking to a local etcd server such as might be typical in a containerized environment.  The local etcd instance
 is responsible for dealing with the cluster.
 
 
+Usage
+======
+
+A running [etcd](https://github.com/coreos/etcd) instance is required.
+
+
+_Run etcd in a [Docker](https://www.docker.com) container_
+
+```
+docker run -p 4001:4001 -p 7001:7001 coreos/etcd -name etcd
 ```
 
-var client = new EtcdClient();
+_Connect to the server with ezetcd_
 
-client.setNode('/directory1', directory:true).then((NodeEvent ne){
+```
 
-  print('created $ne');
+import 'package:ezetcd/ezetcd.dart';
 
-});
+main(){
+
+  var client = new EtcdClient();
+
+  client.setNode('/directory1', directory:true).then((NodeEvent ne){
+
+    print('created $ne');
+
+  });
+}
 
 ```
 
