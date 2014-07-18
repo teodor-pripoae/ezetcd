@@ -1,5 +1,5 @@
 name: ezetcd
-version: 0.0.1
+version: 0.1.0
 author: Name It Later
 description: A client for etcd
 homepage: https://github.com/nameitlater/ezetcd
